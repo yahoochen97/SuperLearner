@@ -42,9 +42,9 @@ data_holdout = rbind(data_holdout_pos,data_holdout_neg)
 data_test = rbind(data_test_pos,data_test_neg)
 
 # split datasets to X and Y
-X_train = data_train[,c(2:100)]
-X_test = data_test[,c(2:100)]
-X_holdout = data_holdout[,c(2:100)]
+X_train = data_train[,c(2:ncol(data_train))]
+X_test = data_test[,c(2:ncol(data_train))]
+X_holdout = data_holdout[,c(2:ncol(data_train))]
 Y_train = data_train[,c(1)]
 Y_test = data_test[,c(1)]
 Y_holdout = data_holdout[,c(1)]
@@ -123,7 +123,7 @@ SL.glmnet.0.75 <- function(..., alpha = 0.75,family="binomial"){
 my_library = c("SL.svm.4",
                "SL.glmnet.0","SL.glmnet.1","SL.glmnet.0.50",
                "SL.glmnet.0.25","SL.glmnet.0.75",
-               "SL.knn","SL.randomForest")
+               "SL.knn","SL.randomForest","SL.lm","SL.mean","SL.glmnet","SL.glm","SL.nnls")
 ```
 
 # The values we are changing are nu and cost(C)
