@@ -114,7 +114,7 @@ for(i in 1:length(predictions)){
 feature_index = c()
 for(i in 1:length(top_index)){
   for(j in 1:n){
-    feature_index = c(feature_index,sample_data_vector[(ns*i+j)])
+    feature_index = c(feature_index,sample_data_vector[(n*i+j)])
   }
 }
 ```
