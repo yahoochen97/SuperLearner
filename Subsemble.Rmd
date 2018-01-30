@@ -1,0 +1,127 @@
+---
+title: "Subemble"
+author: "Yehu Chen"
+date: "2018/1/29"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(nnls)
+library(SuperLearner)
+
+# Review available models.
+listWrappers()
+```
+
+```{r}
+filename = "Binomial_dataset_5_final.txt"
+data = read.csv(filename)
+
+data_train = data[c(1:225),]
+data_test = data[c(226:300),]
+
+#X_train = data_train[,c(2:100)]
+#X_test = data_test[,c(2:100)]
+#Y_train = data_train[,c(1)]
+#Y_test = data_test[,c(1)]
+
+X_train = data_train[,c(2:ncol(data_train))]
+Y_train = data_train[,c(1)]
+X_test = data_test[,c(2:ncol(data_test))]
+Y_test = data_test[,c(1)]
+
+sample_data_vector = c()
+
+# number of subsemble
+N = 1000
+
+# size of subsemble
+n = 15
+
+for(i in 1:N){
+  sample_data_vector = c(sample_data_vector,sample(ncol(X_train),n))
+}
+
+```
+
+```{r}
+library(caret)
+library(lattice)
+library(ggplot2)
+
+SL.svm.4 = function(..., family = "binomial", kernel = "polynomial", degree = 4, coef0 = 1) {
+  SL.svm(..., family = family, kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+
+SL.svm.6 = function(...,family = "binomial",kernel = "sigmoid",coef0 = 0) {
+  SL.svm(...,family = family, kernel = kernel,coef0 = coef0)
+}
+
+SL.svm.11 = function(..., kernel = "radial", coef0 = 1,family = binomial()) {
+  SL.svm(...,kernel = kernel, coef0 = coef0,family = family)
+}
+
+SL.glmnet.0.50 <- function(..., alpha = 0.50,family="binomial"){
+  SL.glmnet(..., alpha = alpha, family = family)
+}
+
+my_library = c(
+  #"SL.svm.4","SL.svm.6",
+  "SL.randomForest")
+               #,"SL.glmnet.0.50","SL.knn","SL.randomForest")
+```
+
+
+# run sl for all subemble
+```{r}
+predictions = c()
+for(i in 1:N){
+  X_index = sample_data_vector[(n*i-14):(n*i)]
+  sl = SuperLearner(Y=Y_train, X = X_train[,X_index], family=binomial(),SL.library=my_library)
+  pred = predict(sl, X_test[,X_index], onlySL = T)
+  risk = 0
+  for(j in 1:75){
+    if( (pred$pred[j]>=0.5) && (Y_test[j]==1) ){
+      risk = risk + 1
+    }
+    if( (pred$pred[j]<0.5) && (Y_test[j]==0) ){
+      risk = risk + 1
+    }
+  }
+  predictions = c(predictions,risk)
+}
+
+```
+
+# rank the predictions and select the top 20% indexes
+```{r}
+threshold = sort(predictions, decreasing = TRUE)[as.numeric(4*nrow(X_train)/5)]
+top_index = c()
+for(i in 1:length(predictions)){
+  if(predictions[i]>=threshold){
+    top_index = c(top_index,i)
+  }
+}
+```
+
+# use prediction top index to get index of data features
+```{r}
+feature_index = c()
+for(i in 1:length(top_index)){
+  for(j in 1:n){
+    feature_index = c(feature_index,sample_data_vector[(ns*i+j)])
+  }
+}
+```
+
+# barplot the feature frequency
+```{r}
+barplot(table(feature_index))
+sort(table(feature_index), decreasing=TRUE)[1:10]
+```
+

@@ -1,0 +1,169 @@
+---
+title: "Customed Wrapper"
+author: "Yehu Chen"
+date: "2018/1/28"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(nnls)
+library(SuperLearner)
+
+# Review available models.
+listWrappers()
+```
+
+# Read binomial dataset
+# Separate data into 50% training, 25% holdout validation and 25% test sets
+```{r}
+filename = "Binomial_dataset_5_final.txt"
+data = read.csv(filename)
+
+# First divide data into positive and negative sets
+data_pos = subset(data,Ytemp==1)
+data_neg = subset(data,Ytemp==0)
+
+# select the 50%, 25%, 25% to be training, holdout and testing data
+data_train_pos = data_pos[c(2:as.integer(nrow(data_pos)/2)),]
+data_holdout_pos = data_pos[c(as.integer(nrow(data_pos)/2+1):as.integer(3*nrow(data_pos)/4)),]
+data_test_pos = data_pos[c(as.integer(3*nrow(data_pos)/4+1):nrow(data_pos)),]
+
+data_train_neg = data_neg[c(2:as.integer(nrow(data_neg)/2)),]
+data_holdout_neg = data_neg[c(as.integer(nrow(data_neg)/2+1):as.integer(3*nrow(data_neg)/4)),]
+data_test_neg = data_neg[c(as.integer(3*nrow(data_neg)/4+1):nrow(data_neg)),]
+
+# stack the pos and neg datasets
+data_train = rbind(data_train_pos,data_train_neg)
+data_holdout = rbind(data_holdout_pos,data_holdout_neg)
+data_test = rbind(data_test_pos,data_test_neg)
+
+# split datasets to X and Y
+X_train = data_train[,c(2:100)]
+X_test = data_test[,c(2:100)]
+X_holdout = data_holdout[,c(2:100)]
+Y_train = data_train[,c(1)]
+Y_test = data_test[,c(1)]
+Y_holdout = data_holdout[,c(1)]
+```
+
+# Notice that the final training, holdout, and testing Y are still imbalanced.
+# We only split the dataset to training, holdout, and testing in the same proportion as the original dataset. This might require extra work, but can eliminate the pitfall where the data is imbalanced to positive but the training data is imbalanced to negative.
+
+# Customize SVM wrappers
+```{r}
+library(caret)
+library(lattice)
+library(ggplot2)
+SL.svm.1 = function(..., kernel = "linear") {
+  SL.svm(..., kernel = kernel)
+}
+
+SL.svm.2 = function(..., kernel = "polynomial", degree = 2, coef0 = 1) {
+  SL.svm(..., kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+SL.svm.3 = function(..., kernel = "polynomial", degree = 2, coef0 = 10) {
+  SL.svm(..., kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+SL.svm.4 = function(..., kernel = "polynomial", degree = 4, coef0 = 1) {
+  SL.svm(..., kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+SL.svm.5 = function(..., kernel = "polynomial", degree = 4, coef0 = 10) {
+  SL.svm(..., kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+SL.svm.6 = function(..., kernel = "sigmoid",coef0 = 0) {
+  SL.svm(..., kernel = kernel,coef0 = coef0)
+}
+
+SL.svm.7 = function(..., kernel = "sigmoid",coef0 = 1) {
+  SL.svm(..., kernel = kernel,coef0 = coef0)
+}
+
+SL.svm.10 = function(...,type.class = "C-classification", cost = 3) {
+  SL.svm(...,type.class = type.class, cost = cost )
+}
+
+SL.svm.11 = function(..., kernel = "radial", coef0 = 1) {
+  SL.svm(..., kernel = kernel, coef0 = coef0)
+}
+
+SL.svm.12 = function(..., kernel = "radial", coef0 = 10) {
+  SL.svm(..., kernel = kernel, coef0 = coef0)
+}
+SL.glmnet.0 <- function(..., alpha = 0,family="binomial"){
+  SL.glmnet(..., alpha = alpha , family = family)
+}
+
+SL.glmnet.1 <- function(..., alpha = 1,family="binomial"){
+  SL.glmnet(..., alpha = alpha , family = family)
+}
+
+SL.glmnet.0.25 <- function(..., alpha = 0.25,family="binomial"){
+  SL.glmnet(..., alpha = alpha, family = family)
+}
+
+SL.glmnet.0.50 <- function(..., alpha = 0.50,family="binomial"){
+  SL.glmnet(..., alpha = alpha, family = family)
+}
+
+SL.glmnet.0.75 <- function(..., alpha = 0.75,family="binomial"){
+  SL.glmnet(..., alpha = alpha, family = family)
+}
+
+#"SL.svm.1","SL.svm.2","SL.svm.3",
+#"SL.svm.5","SL.svm.6","SL.svm.12",
+#"SL.svm.7","SL.glmnet","SL.svm.10","SL.svm.11",
+my_library = c("SL.svm.4",
+               "SL.glmnet.0","SL.glmnet.1","SL.glmnet.0.50",
+               "SL.glmnet.0.25","SL.glmnet.0.75",
+               "SL.knn","SL.randomForest")
+```
+
+# The values we are changing are nu and cost(C)
+# We are dealing with an almost balanced dataset, so we leave the class weights as default.
+
+# Fit cv.superlearner
+```{r}
+sl = SuperLearner(Y = Y_train, X = X_train, family = binomial(),
+                  SL.library = my_library)
+
+# Review results.
+sl
+```
+
+```{r}
+barplot(coef(sl))
+```
+
+
+```{r}
+pred = predict(sl, X_holdout, onlySL = T)
+
+# Check the structure of this prediction object.
+str(pred)
+
+# We can see which columns are being populated the library.predict.
+summary(pred$library.predict)
+
+# Histogram of our predicted values.
+qplot(pred$pred) + theme_bw()
+
+# Scatterplot of original values (0, 1) and predicted values.
+# Ideally we would use jitter or slight transparency to deal with overlap.
+qplot(Y_holdout, pred$pred) + theme_bw()
+
+# Review AUC - Area Under Curve
+pred_rocr = ROCR::prediction(pred$pred, Y_holdout)
+auc = ROCR::performance(pred_rocr, measure = "auc", x.measure = "cutoff")@y.values[[1]]
+auc
+```
+
+
+# The auroc value is close to 0.5, meaning that the prediction is no better than chance. This is reasonable because the data itself is randomly generated.
