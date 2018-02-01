@@ -40,18 +40,13 @@ sample_data_vector = c()
 N = 1000
 
 # size of subsemble
-n = 15
+n = 50
 
 for(i in 1:N){
   sample_data_vector = c(sample_data_vector,sample(ncol(X_train),n))
 }
 
 ```
-
-```{r}
-library(caret)
-library(lattice)
-library(ggplot2)
 
 SL.svm.4 = function(..., family = "binomial", kernel = "polynomial", degree = 4, coef0 = 1) {
   SL.svm(..., family = family, kernel = kernel, degree = degree, coef0 = coef0)
@@ -70,10 +65,76 @@ SL.glmnet.0.50 <- function(..., alpha = 0.50,family="binomial"){
   SL.glmnet(..., alpha = alpha, family = family)
 }
 
-my_library = c(
-  #"SL.svm.4","SL.svm.6",
-  "SL.randomForest")
-               #,"SL.glmnet.0.50","SL.knn","SL.randomForest")
+```{r}
+library(caret)
+library(lattice)
+library(ggplot2)
+
+SL.svm.1 = function(..., kernel = "linear") {
+  SL.svm(..., kernel = kernel)
+}
+
+SL.svm.2 = function(..., kernel = "polynomial", degree = 2, coef0 = 1) {
+  SL.svm(..., kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+SL.svm.3 = function(..., kernel = "polynomial", degree = 2, coef0 = 10) {
+  SL.svm(..., kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+SL.svm.4 = function(..., kernel = "polynomial", degree = 4, coef0 = 1) {
+  SL.svm(..., kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+SL.svm.5 = function(..., kernel = "polynomial", degree = 4, coef0 = 10) {
+  SL.svm(..., kernel = kernel, degree = degree, coef0 = coef0)
+}
+
+SL.svm.6 = function(..., kernel = "sigmoid",coef0 = 0) {
+  SL.svm(..., kernel = kernel,coef0 = coef0)
+}
+
+SL.svm.7 = function(..., kernel = "sigmoid",coef0 = 1) {
+  SL.svm(..., kernel = kernel,coef0 = coef0)
+}
+
+SL.svm.10 = function(...,type.class = "C-classification", cost = 3) {
+  SL.svm(...,type.class = type.class, cost = cost )
+}
+
+SL.svm.11 = function(..., kernel = "radial", coef0 = 1) {
+  SL.svm(..., kernel = kernel, coef0 = coef0)
+}
+
+SL.svm.12 = function(..., kernel = "radial", coef0 = 10) {
+  SL.svm(..., kernel = kernel, coef0 = coef0)
+}
+SL.glmnet.0 <- function(..., alpha = 0,family="binomial"){
+  SL.glmnet(..., alpha = alpha , family = family)
+}
+
+SL.glmnet.1 <- function(..., alpha = 1,family="binomial"){
+  SL.glmnet(..., alpha = alpha , family = family)
+}
+
+SL.glmnet.0.25 <- function(..., alpha = 0.25,family="binomial"){
+  SL.glmnet(..., alpha = alpha, family = family)
+}
+
+SL.glmnet.0.50 <- function(..., alpha = 0.50,family="binomial"){
+  SL.glmnet(..., alpha = alpha, family = family)
+}
+
+SL.glmnet.0.75 <- function(..., alpha = 0.75,family="binomial"){
+  SL.glmnet(..., alpha = alpha, family = family)
+}
+
+#"SL.svm.1","SL.svm.2","SL.svm.3",
+#"SL.svm.5","SL.svm.6","SL.svm.12",
+#"SL.svm.7","SL.glmnet","SL.svm.10","SL.svm.11",
+my_library = c("SL.svm.4",
+               "SL.glmnet",
+               "SL.nnls")
 ```
 
 
@@ -81,12 +142,12 @@ my_library = c(
 ```{r}
 predictions = c()
 for(i in 1:N){
-  X_index = sample_data_vector[(n*i-14):(n*i)]
-  sl = SuperLearner(Y=Y_train, X = X_train[,X_index], family=binomial(),SL.library=my_library)
-  pred = predict(sl, X_test[,X_index], onlySL = T)
+  X_index = sample_data_vector[(n*i-n+1):(n*i)]
+  sl = SuperLearner(Y=Y_train, X = X_train[,c(X_index)], family=binomial(),SL.library=my_library)
+  pred = predict(sl, X_test[,c(X_index)], onlySL = T)
   risk = 0
   for(j in 1:75){
-    if( (pred$pred[j]>=0.5) && (Y_test[j]==1) ){
+    if( (pred$pred[j]>=0.8) && (Y_test[j]==1) ){
       risk = risk + 1
     }
     if( (pred$pred[j]<0.5) && (Y_test[j]==0) ){
@@ -98,9 +159,9 @@ for(i in 1:N){
 
 ```
 
-# rank the predictions and select the top 20% indexes
+# rank the predictions and select the top 10% indexes
 ```{r}
-threshold = sort(predictions, decreasing = TRUE)[as.numeric(4*nrow(X_train)/5)]
+threshold = sort(predictions, decreasing = TRUE)[as.numeric(N/10)]
 top_index = c()
 for(i in 1:length(predictions)){
   if(predictions[i]>=threshold){
@@ -122,6 +183,6 @@ for(i in 1:length(top_index)){
 # barplot the feature frequency
 ```{r}
 barplot(table(feature_index))
-sort(table(feature_index), decreasing=TRUE)[1:10]
+sort(table(feature_index), decreasing=TRUE)[1:20]
 ```
 
